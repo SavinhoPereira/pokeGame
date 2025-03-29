@@ -5,31 +5,36 @@ requireLogin();
 session_start();
 require_once '../src/pokeapi.php';
 
-$pokemons = getPokemons(20, 0)['results'];
+$pokemons = getPokemons(20, 0)['results']; 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $team_name = $_POST['team_name'];
-    $characters_selected = $_POST['characters'];
+    $characters_selected = isset($_POST['characters']) ? explode(",", $_POST['characters']) : [];
 
-    if (count($characters_selected) <= 5) {
+    if (count($characters_selected) > 5) {
+        $error = "Você pode adicionar no máximo 5 personagens ao seu time.";
+    } else {
         $stmt = $pdo->prepare("INSERT INTO teams (user_id, name) VALUES (:user_id, :name)");
         $stmt->bindParam(':user_id', $_SESSION['user_id']);
         $stmt->bindParam(':name', $team_name);
         $stmt->execute();
-
         $team_id = $pdo->lastInsertId();
 
-        foreach ($characters_selected as $character_id) {
-            $stmt = $pdo->prepare("INSERT INTO team_characters (team_id, character_id) VALUES (:team_id, :character_id)");
-            $stmt->bindParam(':team_id', $team_id);
-            $stmt->bindParam(':character_id', $character_id);
+        foreach ($characters_selected as $character_name) {
+            $stmt = $pdo->prepare("SELECT id FROM characters WHERE name = :name");
+            $stmt->bindParam(':name', $character_name);
             $stmt->execute();
-        }
+            $character = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if ($character) {
+                $stmt = $pdo->prepare("INSERT INTO team_characters (team_id, character_id) VALUES (:team_id, :character_id)");
+                $stmt->bindParam(':team_id', $team_id);
+                $stmt->bindParam(':character_id', $character['id']);
+                $stmt->execute();
+            }
+        }
         header('Location: teams.php');
         exit();
-    } else {
-        $error = "Você pode adicionar no máximo 5 personagens ao seu time.";
     }
 }
 ?>
@@ -55,11 +60,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <input type="text" name="team_name" id="team_name" required>
 
             <label for="characters">Selecione até 5 personagens:</label>
-            <select name="characters[]" id="characters" multiple required>
+            <select name="characters[]" id="characters" multiple>
                 <?php foreach ($pokemons as $pokemon): ?>
                     <option value="<?= $pokemon['name'] ?>"><?= ucfirst($pokemon['name']) ?></option>
                 <?php endforeach; ?>
             </select>
+
+            <ul id="selected-characters">
+                <!-- Personagens selecionados serão exibidos aqui -->
+            </ul>
+
+            <input type="hidden" name="characters" id="hidden-characters" value="">
 
             <button type="submit">Criar Time</button>
         </form>
@@ -89,5 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         <?php endforeach; ?>
     </div>
+
+    <script src="../assets/js/selecionarPokemon.js"></script>
 </body>
 </html>
