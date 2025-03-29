@@ -14,23 +14,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (count($characters_selected) > 5) {
         $error = "Você pode adicionar no máximo 5 personagens ao seu time.";
     } else {
+        // Inserir o time
         $stmt = $pdo->prepare("INSERT INTO teams (user_id, name) VALUES (:user_id, :name)");
         $stmt->bindParam(':user_id', $_SESSION['user_id']);
         $stmt->bindParam(':name', $team_name);
         $stmt->execute();
         $team_id = $pdo->lastInsertId();
 
+        // Adicionar os personagens ao time, usando os dados da API
         foreach ($characters_selected as $character_name) {
-            $stmt = $pdo->prepare("SELECT id FROM characters WHERE name = :name");
-            $stmt->bindParam(':name', $character_name);
-            $stmt->execute();
-            $character = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($character) {
-                $stmt = $pdo->prepare("INSERT INTO team_characters (team_id, character_id) VALUES (:team_id, :character_id)");
-                $stmt->bindParam(':team_id', $team_id);
-                $stmt->bindParam(':character_id', $character['id']);
-                $stmt->execute();
+            // Encontre o personagem correspondente nos dados da API
+            foreach ($pokemons as $pokemon) {
+                if ($pokemon['name'] == $character_name) {
+                    // Agora insira os dados do personagem diretamente na tabela team_characters
+                    $stmt = $pdo->prepare("INSERT INTO team_characters (team_id, character_name, character_image) VALUES (:team_id, :character_name, :character_image)");
+                    $stmt->bindParam(':team_id', $team_id);
+                    $stmt->bindParam(':character_name', $pokemon['name']);
+                    $stmt->bindParam(':character_image', $pokemon['url']); // Se a imagem é a URL
+                    $stmt->execute();
+                }
             }
         }
         header('Location: teams.php');
@@ -83,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($teams as $team):
-            $stmt = $pdo->prepare("SELECT c.name FROM team_characters tc INNER JOIN characters c ON tc.character_id = c.id WHERE tc.team_id = :team_id");
+            $stmt = $pdo->prepare("SELECT character_name, character_image FROM team_characters WHERE team_id = :team_id");
             $stmt->bindParam(':team_id', $team['id']);
             $stmt->execute();
             $team_characters = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -93,7 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <p>Personagens:</p>
                 <ul>
                     <?php foreach ($team_characters as $character): ?>
-                        <li><?= $character['name'] ?></li>
+                        <li>
+                            <img src="<?= $character['character_image'] ?>" alt="<?= $character['character_name'] ?>" style="width: 50px; height: 50px;">
+                            <?= $character['character_name'] ?>
+                        </li>
                     <?php endforeach; ?>
                 </ul>
                 <a href="#">Excluir</a>

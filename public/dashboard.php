@@ -1,7 +1,6 @@
 <?php
 require_once '../src/auth.php';
 requireLogin();
-session_start();
 ?>
 
 <!DOCTYPE html>
@@ -15,7 +14,7 @@ session_start();
 <body>
     <div class="dashboard-container">
         <h2>Bem-vindo ao Dashboard</h2>
-        <p>Você está logado como: <?= $_SESSION['user_id'] ?></p>
+        <p>Você está logado como: <?= $_SESSION['user_email'] ?></p>
         <a href="teams.php">Gerenciar Times</a>
         <br><br>
         <a href="logout.php">Sair</a>
