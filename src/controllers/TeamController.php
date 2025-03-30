@@ -25,6 +25,10 @@ class TeamController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getPokemonsForSelection() {
+        return PokeApiService::getPokemons(20, 0);
+    }
+
     public function createTeam($team_name, $characters_selected) {
         if (count($characters_selected) > 5) {
             return "Você pode adicionar no máximo 5 personagens ao seu time.";
@@ -52,6 +56,7 @@ class TeamController {
     }
 
     public function deleteTeam($team_id) {
+
         $stmt = $this->pdo->prepare("DELETE FROM team_characters WHERE team_id = :team_id");
         $stmt->bindParam(':team_id', $team_id, PDO::PARAM_INT);
         $stmt->execute();
@@ -65,7 +70,8 @@ class TeamController {
 $controller = new TeamController($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['team_name'])) {
-    $error = $controller->createTeam($_POST['team_name'], explode(",", $_POST['characters']));
+    $characters_selected = isset($_POST['characters']) ? explode(",", $_POST['characters']) : [];
+    $error = $controller->createTeam($_POST['team_name'], $characters_selected);
     header('Location: ../public/teams.php');
     exit();
 }
@@ -75,3 +81,5 @@ if (isset($_GET['delete'])) {
     header('Location: ../public/teams.php');
     exit();
 }
+
+?>
